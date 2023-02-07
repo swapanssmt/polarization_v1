@@ -111,11 +111,11 @@ public:
 
 public:
   // Geometry
-  Array<int_fast64_t> H, HN, BH; // Topology, Neigbourhood, Boundary
+  Array<int_fast64_t> H, HN, BH, layer; // Topology, Neigbourhood, Boundary
   Array<double> r, s11, s12, s33, s43, S0;               // Grid nodes
 
   // Material parameters for each Element
-  Array<double> mua, mus, g, n, layer; // Absorption, Scattering & Scattering inhomogeneity, Index of refraction
+  Array<double> mua, mus, g, n; // Absorption, Scattering & Scattering inhomogeneity, Index of refraction
   Array<double> k, g2;          // Wave number = omega / c * n, square of g
 
   // Boundary definitions for each Boundary triangle
