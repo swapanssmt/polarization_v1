@@ -89,8 +89,8 @@ public:
   // will return nonzero if the photon will hit a face in element, and also the distance to the point of intersection
   int WhichFace(Photon *phot, double *dist);
   // modify start
-  void 	rotSphi(Photon *phot, double phi);
-  void 	updateU(Photon *phot, double phi, double theta);
+  void 	rotSphi(Photon *phot, double phi_s);
+  void 	updateU(Photon *phot, double phi_s, double theta_s);
   // modify end
 
   // Create, scatter, mirror & propagate a photon
@@ -1293,11 +1293,11 @@ int MC3D::WhichFace(Photon *phot, double *dist)
   return (-1);
 }
 // start modify
-void 	MC3D::rotSphi(Photon *phot, double phi) {
+void 	MC3D::rotSphi(Photon *phot, double phi_s) {
 	double	cos2phi, sin2phi;
 
-	cos2phi = cos(2*phi);
-	sin2phi = sin(2*phi); 
+	cos2phi = cos(2*phi_s);
+	sin2phi = sin(2*phi_s); 
 	
 	phot->S2[0] = phot->S[0]; 
 	phot->S2[1] = phot->S[1]*cos2phi+phot->S[2]*sin2phi; 
@@ -1305,7 +1305,7 @@ void 	MC3D::rotSphi(Photon *phot, double phi) {
 	phot->S2[3] = phot->S[3]; 
 
 }
-void 	MC3D::updateU(Photon *phot, double phi, double theta) {
+void 	MC3D::updateU(Photon *phot, double phi_s, double theta_s) {
 	double	ux, uy, uz, uxx, uyy, uzz, temp, sintheta, costheta, sinphi, cosphi;
 	double 	pi = 3.14159265358979;
 	
@@ -1313,10 +1313,10 @@ void 	MC3D::updateU(Photon *phot, double phi, double theta) {
 	uy = phot->dir[1];
 	uz = phot->dir[2];
 	
-	costheta = cos(theta);
+	costheta = cos(theta_s);
 	sintheta = sqrt(1.0 - costheta*costheta); 
-	cosphi   = cos(phi);
-	if (phi < pi)
+	cosphi   = cos(phi_s);
+	if (phi_s < pi)
 		sinphi = sqrt(1.0 - cosphi*cosphi);   
 	else
 		sinphi = -sqrt(1.0 - cosphi*cosphi);
@@ -1574,10 +1574,10 @@ void MC3D::CreatePhoton(Photon *phot)
   phot->S[1]=S0[1];
   phot->S[2]=S0[2];
   phot->S[3]=S0[3];
-  phot->S2[0]=S0[0];
-  phot->S2[1]=S0[1];
-  phot->S2[2]=S0[2];
-  phot->S2[3]=S0[3];
+  phot->S2[0]=0.0;
+  phot->S2[1]=0.0;
+  phot->S2[2]=0.0;
+  phot->S2[3]=0.0;
 
   phot->dir_n[0] = phot->dir[0];
   phot->dir_n[1] = phot->dir[1];
@@ -1972,10 +1972,19 @@ void MC3D::PropagatePhoton(Photon *phot)
 		          UT[0]+=phot->S2[2]*phot->weight;
 		          VT[0]+=phot->S2[3]*phot->weight;
             }/*z>slab size*/
-            IR[ib] += phot->S2[0];
-			      QR[ib] += phot->S2[1];	
-			      UR[ib] += phot->S2[2];
-			      VR[ib] += phot->S2[3];
+            if (phot->dir[2]<=0.0)
+            {
+              phi_s=atan2(phot->dir[1],phot->dir[0]);
+            }
+            else
+            {
+              phi_s=-atan2(phot->dir[1],phot->dir[0]);
+            }
+            rotSphi(phot, phi_s);
+            IB[ib] += phot->S2[0];
+			      QB[ib] += phot->S2[1];	
+			      UB[ib] += phot->S2[2];
+			      VB[ib] += phot->S2[3];
           }
           // end modify
           // Photon propagation will terminate
