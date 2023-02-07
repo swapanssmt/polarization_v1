@@ -41,7 +41,7 @@ int RayTriangleIntersects(double O[3], double D[3], double V0[3], double V1[3], 
 // Structure to hold information of a photon-packet
 typedef struct _Photon
 {
-  double pos[3], dir[3];
+  double pos[3], dir[3], dir_n[3], S[4], S2[4];
   int_fast64_t curel, nextel, curface, nextface;
   double weight;
   double phase;
@@ -87,6 +87,10 @@ public:
   // Given position, direction, current element & current face photon is on,
   // will return nonzero if the photon will hit a face in element, and also the distance to the point of intersection
   int WhichFace(Photon *phot, double *dist);
+  // modify start
+  void 	rotSphi(Photon *phot, double phi);
+  void 	updateU(Photon *phot, double phi, double theta);
+  // modify end
 
   // Create, scatter, mirror & propagate a photon
   void CreatePhoton(Photon *phot);
@@ -107,10 +111,10 @@ public:
 public:
   // Geometry
   Array<int_fast64_t> H, HN, BH; // Topology, Neigbourhood, Boundary
-  Array<double> r;               // Grid nodes
+  Array<double> r, s11, s12, s33, s43, S0;               // Grid nodes
 
   // Material parameters for each Element
-  Array<double> mua, mus, g, n; // Absorption, Scattering & Scattering inhomogeneity, Index of refraction
+  Array<double> mua, mus, g, n, layer; // Absorption, Scattering & Scattering inhomogeneity, Index of refraction
   Array<double> k, g2;          // Wave number = omega / c * n, square of g
 
   // Boundary definitions for each Boundary triangle
@@ -141,9 +145,13 @@ public:
 
   // Number of photons to compute
   int_fast64_t Nphoton;
+  int_fast64_t nangles, activate_pol;
 
   // Speed of light (mm / ps)
   double c0;
+  // start modify
+  double z_min, z_max, phi_s, theta_s, I1, I0;
+  // end modify
 
   // Calculatable parameters
   Array<double> ER, EI;     // Absorbed power density in the volumetric elements (real & imaginary)
@@ -155,6 +163,24 @@ public:
   Array<int> LightSources;
   Array<int> LightSourcesMother;
   Array<double> LightSourcesCDF;
+  // start modify
+  Array<double> I, I_i;
+  Array<double> Q, Q_i;
+  Array<double> U, U_i;
+  Array<double> V, V_i;
+  Array<double> IB, IB_i;
+  Array<double> QB, QB_i;
+  Array<double> UB, UB_i;
+  Array<double> VB, VB_i;
+  Array<double> IR, IR_i;
+  Array<double> QR, QR_i;
+  Array<double> UR, UR_i;
+  Array<double> VR, VR_i;
+  Array<double> IT, IT_i;
+  Array<double> QT, QT_i;
+  Array<double> UT, UT_i;
+  Array<double> VT, VT_i;
+  // end modify
 
   // Model parameters
   double weight0, chance; // Weight when to commence the roulette & the chance of revitalizing the photon
@@ -175,6 +201,16 @@ public:
 // Constuctor, set some default values for Monte Carlo
 MC3D::MC3D()
 {
+  // start modify
+  z_min=0.0;
+  z_max=0.0;
+  phi_s=0.0;
+  theta_s=0.0;
+  I1=0.0;
+  I0=0.0;
+  nangles=1;
+  activate_pol=0;
+  // end modify 
   c0 = 2.99792458e11;
 
   Nphoton = 1;
@@ -206,6 +242,22 @@ MC3D &MC3D::operator=(const MC3D &ref)
     HN = ref.HN;
     BH = ref.BH;
     r = ref.r;
+    // start modify
+    z_min = ref.z_min;
+    z_max = ref.z_max;
+    phi_s = ref.phi_s;
+    theta_s = ref.theta_s;
+    I1 = ref.I1;
+    I0 = ref.I0;
+    s11 = ref.s11;
+    s12 = ref.s12;
+    s33 = ref.s33;
+    s43 = ref.s43;
+    S0= ref.S0;
+    layer = ref.layer;
+    nangles = ref.nangles;
+    activate_pol = ref.activate_pol;
+    // end modify
     mua = ref.mua;
     mus = ref.mus;
     g = ref.g;
@@ -242,7 +294,72 @@ MC3D &MC3D::operator=(const MC3D &ref)
     for (ii = 0; ii < DEBR.N; ii++) // [AL]
       DEBR[ii] = DEBI[ii] = 0.0;    // [AL]
 
-
+    //start modify
+    I.resize(ref.I.N);
+    I_i.resize(ref.I_i.N);
+    for (ii = 0; ii < I.N; ii++)
+      I[ii] = I_i[ii] = 0.0;
+    Q.resize(ref.Q.N);
+    Q_i.resize(ref.Q_i.N);
+    for (ii = 0; ii < Q.N; ii++)
+      Q[ii] = Q_i[ii] = 0.0;
+    U.resize(ref.U.N);
+    U_i.resize(ref.U_i.N);
+    for (ii = 0; ii < U.N; ii++)
+      U[ii] = U_i[ii] = 0.0;
+    V.resize(ref.V.N);
+    V_i.resize(ref.V_i.N);
+    for (ii = 0; ii < V.N; ii++)
+      V[ii] = V_i[ii] = 0.0;
+    IB.resize(ref.IB.N);
+    IB_i.resize(ref.IB_i.N);
+    for (ii = 0; ii < IB.N; ii++)
+      IB[ii] = IB_i[ii] = 0.0;
+    QB.resize(ref.QB.N);
+    QB_i.resize(ref.QB_i.N);
+    for (ii = 0; ii < QB.N; ii++)
+      QB[ii] = QB_i[ii] = 0.0;
+    UB.resize(ref.UB.N);
+    UB_i.resize(ref.UB_i.N);
+    for (ii = 0; ii < UB.N; ii++)
+      UB[ii] = UB_i[ii] = 0.0;
+    VB.resize(ref.VB.N);
+    VB_i.resize(ref.VB_i.N);
+    for (ii = 0; ii < VB.N; ii++)
+      VB[ii] = VB_i[ii] = 0.0;
+    IR.resize(ref.IR.N);
+    IR_i.resize(ref.IR_i.N);
+    for (ii = 0; ii < IR.N; ii++)
+      IR[ii] = IR_i[ii] = 0.0;
+    QR.resize(ref.QR.N);
+    QR_i.resize(ref.QR_i.N);
+    for (ii = 0; ii < QR.N; ii++)
+      QR[ii] = QR_i[ii] = 0.0;
+    UR.resize(ref.UR.N);
+    UR_i.resize(ref.UR_i.N);
+    for (ii = 0; ii < UR.N; ii++)
+      UR[ii] = UR_i[ii] = 0.0;
+    VR.resize(ref.VR.N);
+    VR_i.resize(ref.VR_i.N);
+    for (ii = 0; ii < VR.N; ii++)
+      VR[ii] = VR_i[ii] = 0.0;
+    IT.resize(ref.IT.N);
+    IT_i.resize(ref.IT_i.N);
+    for (ii = 0; ii < IT.N; ii++)
+      IT[ii] = IT_i[ii] = 0.0;
+    QT.resize(ref.QT.N);
+    QT_i.resize(ref.QT_i.N);
+    for (ii = 0; ii < QT.N; ii++)
+      QT[ii] = QT_i[ii] = 0.0;
+    UT.resize(ref.UT.N);
+    UT_i.resize(ref.UT_i.N);
+    for (ii = 0; ii < UT.N; ii++)
+      UT[ii] = UT_i[ii] = 0.0;
+    VT.resize(ref.VT.N);
+    VT_i.resize(ref.VT_i.N);
+    for (ii = 0; ii < VT.N; ii++)
+      VT[ii] = VT_i[ii] = 0.0;
+    // end modify
     // Initialize BCIntensity to one if not given
     if (!BCIntensity.N)
     {
@@ -477,6 +594,38 @@ void MC3D::ErrorChecks()
     throw SIZE_MISMATCH_G;
     return;
   }
+  // start modify
+  if (s11.Nx != (nangles+1))
+  {
+    throw SIZE_MISMATCH_s11;
+    return;
+  }
+  if (s12.Nx != (nangles+1))
+  {
+    throw SIZE_MISMATCH_s12;
+    return;
+  }
+  if (s33.Nx != (nangles+1))
+  {
+    throw SIZE_MISMATCH_s33;
+    return;
+  }
+  if (s43.Nx != (nangles+1))
+  {
+    throw SIZE_MISMATCH_s43;
+    return;
+  }
+  if (S0.Nx != 4)
+  {
+    throw SIZE_MISMATCH_S0;
+    return;
+  }
+  if (layer.Nx != H.Nx)
+  {
+    throw SIZE_MISMATCH_layer;
+    return;
+  }
+  // end modify
 
   // row size of H and mua are equal
   if (mua.Nx != H.Nx)
@@ -594,6 +743,14 @@ void MC3D::Init()
   DistributeArray(HN);
   DistributeArray(BH);
   DistributeArray(r);
+  // start modify
+  DistributeArray(s11);
+  DistributeArray(s12);
+  DistributeArray(s33);
+  DistributeArray(s43);
+  DistributeArray(S0);
+  DistributeArray(layer);
+  // end modify
   DistributeArray(mua);
   DistributeArray(mus);
   DistributeArray(g);
@@ -603,6 +760,8 @@ void MC3D::Init()
   DistributeArray(BCn);
   MPI_Bcast(&f, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
   MPI_Bcast(&Nphoton, 1, MPI_LONG, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&nangles, 1, MPI_LONG, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&activate_pol, 1, MPI_LONG, 0, MPI_COMM_WORLD);
   MPI_Bcast(&weight0, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
   MPI_Bcast(&chance, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
   Nphoton /= nodecount;
@@ -631,8 +790,85 @@ void MC3D::Init()
 
   for (ii = 0; ii < BH.Nx; ii++)
     DEBR[ii] = DEBI[ii] = 0.0;
-
-
+  // start modify
+  I.resize(H.Nx);
+  I_i.resize(H.Nx);
+  for (ii = 0; ii < H.Nx; ii++)
+    I[ii] = I_i[ii] = 0.0;
+  Q.resize(H.Nx);
+  Q_i.resize(H.Nx);
+  for (ii = 0; ii < H.Nx; ii++)
+    Q[ii] = Q_i[ii] = 0.0;
+  U.resize(H.Nx);
+  U_i.resize(H.Nx);
+  for (ii = 0; ii < H.Nx; ii++)
+    U[ii] = U_i[ii] = 0.0;
+  V.resize(H.Nx);
+  V_i.resize(H.Nx);
+  for (ii = 0; ii < H.Nx; ii++)
+    V[ii] = V_i[ii] = 0.0;
+  IB.resize(BH.Nx);
+  IB_i.resize(BH.Nx);
+  for (ii = 0; ii < BH.Nx; ii++)
+    IB[ii] = IB_i[ii] = 0.0;
+  QB.resize(BH.Nx);
+  QB_i.resize(BH.Nx);
+  for (ii = 0; ii < BH.Nx; ii++)
+    QB[ii] = QB_i[ii] = 0.0;
+  UB.resize(BH.Nx);
+  UB_i.resize(BH.Nx);
+  for (ii = 0; ii < BH.Nx; ii++)
+    UB[ii] = UB_i[ii] = 0.0;
+  VB.resize(BH.Nx);
+  VB_i.resize(BH.Nx);
+  for (ii = 0; ii < BH.Nx; ii++)
+    VB[ii] = VB_i[ii] = 0.0;
+  IR.resize(4);
+  IR_i.resize(4);
+  for (ii = 0; ii < 4; ii++)
+    IR[ii] = IR_i[ii] = 0.0;
+  QR.resize(4);
+  QR_i.resize(4);
+  for (ii = 0; ii < 4; ii++)
+    QR[ii] = QR_i[ii] = 0.0;
+  UR.resize(4);
+  UR_i.resize(4);
+  for (ii = 0; ii < 4; ii++)
+    UR[ii] = UR_i[ii] = 0.0;
+  VR.resize(4);
+  VR_i.resize(4);
+  for (ii = 0; ii < 4; ii++)
+    VR[ii] = VR_i[ii] = 0.0;
+  IT.resize(4);
+  IT_i.resize(4);
+  for (ii = 0; ii < 4; ii++)
+    IT[ii] = IT_i[ii] = 0.0;
+  QT.resize(4);
+  QT_i.resize(4);
+  for (ii = 0; ii < 4; ii++)
+    QT[ii] = QT_i[ii] = 0.0;
+  UT.resize(4);
+  UT_i.resize(4);
+  for (ii = 0; ii < 4; ii++)
+    UT[ii] = UT_i[ii] = 0.0;
+  VT.resize(4);
+  VT_i.resize(4);
+  for (ii = 0; ii < 4; ii++)
+    VT[ii] = VT_i[ii] = 0.0;
+  // end modify
+  // start modify
+  for (ii = 0; ii < r.Nx; ii++)
+  {
+    if(r(ii,2)<z_min)
+    {
+      z_min=r(ii,2);
+    }
+    if (r(ii,2)>z_max)
+    {
+      z_max=r(ii,2);
+    } 
+  }
+  // end modify
   // Initialize BCIntensity to one if not given
   if (!BCIntensity.N)
   {
@@ -1055,6 +1291,53 @@ int MC3D::WhichFace(Photon *phot, double *dist)
 
   return (-1);
 }
+// start modify
+void 	MC3D::rotSphi(Photon *phot, double phi) {
+	double	cos2phi, sin2phi;
+
+	cos2phi = cos(2*phi);
+	sin2phi = sin(2*phi); 
+	
+	phot->S2[0] = phot->S[0]; 
+	phot->S2[1] = phot->S[1]*cos2phi+phot->S[2]*sin2phi; 
+	phot->S2[2] = -phot->S[1]*sin2phi+phot->S[2]*cos2phi;  
+	phot->S2[3] = phot->S[3]; 
+
+}
+void 	MC3D::updateU(Photon *phot, double phi, double theta) {
+	double	ux, uy, uz, uxx, uyy, uzz, temp, sintheta, costheta, sinphi, cosphi;
+	double 	pi = 3.14159265358979;
+	
+	ux = phot->dir[0];
+	uy = phot->dir[1];
+	uz = phot->dir[2];
+	
+	costheta = cos(theta);
+	sintheta = sqrt(1.0 - costheta*costheta); 
+	cosphi   = cos(phi);
+	if (phi < pi)
+		sinphi = sqrt(1.0 - cosphi*cosphi);   
+	else
+		sinphi = -sqrt(1.0 - cosphi*cosphi);
+	
+  /* New directional cosines. */
+  if (1 - fabs(uz) <= 1.0E-12) {      /* close to perpendicular. */
+    uxx = sintheta * cosphi;
+    uyy = sintheta * sinphi;
+    uzz = costheta * SIGN(uz);   /*  SIGN(x) is faster than division. */
+    } 
+  else {					/* usually use this option */
+    temp = sqrt(1.0 - uz * uz);
+    uxx = sintheta * (ux * uz * cosphi - uy * sinphi) / temp + ux * costheta;
+    uyy = sintheta * (uy * uz * cosphi + ux * sinphi) / temp + uy * costheta;
+    uzz = -sintheta * cosphi * temp + uz * costheta;
+    }
+  /* Update directional cosines */
+  phot->dir_n[0] = uxx;
+  phot->dir_n[1] = uyy;
+  phot->dir_n[2] = uzz;
+}
+// end modify
 
 // Create a new photon based on LightSources, LightSourcesMother and LighSourcesCDF
 void MC3D::CreatePhoton(Photon *phot)
@@ -1285,6 +1568,20 @@ void MC3D::CreatePhoton(Photon *phot)
       phot->dir[2] = f[0] * n[2] + f[1] * e1[2] + f[2] * e2[2];
     }
   }
+  // start modify
+  phot->S[0]=S0[0];
+  phot->S[1]=S0[1];
+  phot->S[2]=S0[2];
+  phot->S[3]=S0[3];
+  phot->S2[0]=S0[0];
+  phot->S2[1]=S0[1];
+  phot->S2[2]=S0[2];
+  phot->S2[3]=S0[3];
+
+  phot->dir_n[0] = phot->dir[0];
+  phot->dir_n[1] = phot->dir[1];
+  phot->dir_n[2] = phot->dir[2];
+  // end modify
 
   phot->nextel = -1;
   phot->nextface = -1;
@@ -1296,6 +1593,79 @@ void MC3D::CreatePhoton(Photon *phot)
 // Scatter a photon
 void MC3D::ScatterPhoton(Photon *phot)
 {
+  if(activate_pol==1)
+  {
+    int 	ithedeg;
+    long i;
+    double  cos22,sin22,costheta,sini,cosi;
+    double	temp;
+    double pi = 3.1415926535897932384;
+    /* REJECTION METHOD to choose azimuthal angle phi and deflection angle theta */	
+		do{
+      theta_s 	= acos(2*UnifClosed()-1);       	
+			phi_s = UnifClosed()*2.0*pi;              
+		  I0 = s11(0 ,layer[phot->curel])*phot->S[0] + s12(0 ,layer[phot->curel])*( phot->S[1]*cos(2*phi_s) + phot->S[2]*sin(2*phi_s) );			
+	    ithedeg = floor(theta_s*nangles/pi);  
+      I1 = s11(ithedeg ,layer[phot->curel])*phot->S[0] + s12(ithedeg ,layer[phot->curel])*(phot->S[1]*cos(2*phi_s) + phot->S[2]*sin(2*phi_s));	
+		}while(UnifClosed()*I0>=I1);
+    /*------------------------------------------------------------------------------	
+   Scattering : rotate to meridian plane	then scatter															
+------------------------------------------------------------------------------*/
+			updateU(phot, phi_s, theta_s);  /* update photon trajectory vector */
+						
+			costheta=cos(theta_s);
+
+			rotSphi(phot, phi_s);
+
+			phot->S[0]= s11(ithedeg ,layer[phot->curel])*phot->S2[0]+s12(ithedeg ,layer[phot->curel])*phot->S2[1];
+				
+			phot->S[1]= s12(ithedeg ,layer[phot->curel])*phot->S2[0]+s11(ithedeg ,layer[phot->curel])*phot->S2[1];
+	
+			phot->S[2]= s33(ithedeg ,layer[phot->curel])*phot->S2[2]+s43(ithedeg ,layer[phot->curel])*phot->S2[3];
+				
+			phot->S[3]= -s43(ithedeg ,layer[phot->curel])*phot->S2[2]+s33(ithedeg ,layer[phot->curel])*phot->S2[3];
+
+			temp=(sqrt(1-costheta*costheta)*sqrt(1-phot->dir_n[2]*phot->dir_n[2]));
+			
+			if ( temp==0)
+      {
+				cosi=0;
+        }
+			else{
+			
+				if ((phi_s>pi) & (phi_s<2*pi))
+					cosi=(phot->dir_n[2]*costheta-phot->dir[2])/temp;	
+				else
+					cosi=-(phot->dir_n[2]*costheta-phot->dir[2])/temp;	
+				if (cosi<-1) cosi=-1;
+				if (cosi>1) cosi=1;
+				}
+		
+			sini = sqrt(1-cosi*cosi);
+	
+			cos22=2*cosi*cosi-1;
+			
+			sin22=2*sini*cosi;
+			
+			phot->S2[0]=phot->S[0];
+			
+			phot->S2[1]=(phot->S[1]*cos22-phot->S[2]*sin22);
+					
+			phot->S2[2]=(phot->S[1]*sin22+phot->S[2]*cos22);
+					
+			phot->S2[3]=phot->S[3];
+
+
+			phot->S[1]= phot->S2[1]/phot->S2[0];	
+			phot->S[2]= phot->S2[2]/phot->S2[0];
+			phot->S[3]= phot->S2[3]/phot->S2[0];
+			phot->S[0]= 1.0;
+			
+			for (i=0; i<3; i++) phot->dir[i] = phot->dir_n[i]; /* update U */
+			
+  }
+  else
+  {
   double xi, theta, phi;
   double dxn, dyn, dzn;
 
@@ -1337,6 +1707,7 @@ void MC3D::ScatterPhoton(Photon *phot)
 
   // This is to prevent RayTriangleIntersects from misbehaving after scattering event in the PropagatePhoton
   phot->curface = -1;
+}
 }
 
 // Mirror photons propagation with respect to boundary element ib

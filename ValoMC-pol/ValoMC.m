@@ -384,7 +384,7 @@ function solution = ValoMC(vmcmesh, vmcmedium, vmcboundary, vmcoptions)
             fclose(fp);
             return
         else
-            [solution.I, solution.Q, solution.U, solution.V, solution.IR, solution.QR, solution.UR, solution.VR, solution.IT, solution.QT, solution.UT, solution.VT, solution.element_fluence, solution.boundary_exitance, solution.boundary_fluence, solution.simulation_time, solution.seed_used] = MC3Dmex(H, HN, BH, r, BCType, BCIntensity, BCLightDirectionType, BCLightDirection, BCn, mua, mus, g, n, f, phase0, Nphoton, layer, s11, s12, s33, s43, s0, nangles, activate_pol, disable_pbar, uint64(rnseed));
+            [solution.I, solution.Q, solution.U, solution.V, solution.IB, solution.QB, solution.UB, solution.VB, solution.IR, solution.QR, solution.UR, solution.VR, solution.IT, solution.QT, solution.UT, solution.VT, solution.element_fluence, solution.boundary_exitance, solution.boundary_fluence, solution.simulation_time, solution.seed_used] = MC3Dmex(H, HN, BH, r, BCType, BCIntensity, BCLightDirectionType, BCLightDirection, BCn, mua, mus, g, n, f, phase0, Nphoton, layer, s11, s12, s33, s43, s0, nangles, activate_pol, disable_pbar, uint64(rnseed));
         end
         if(isfield(vmcmedium,'nx') && isfield(vmcmedium,'ny') && isfield(vmcmedium,'nz'))
             % Three dimensional input

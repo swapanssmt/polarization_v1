@@ -4,6 +4,14 @@
 enum mcerror {
    NO_LIGHTSOURCE,
    SIZE_MISMATCH_G,
+   // start modify
+   SIZE_MISMATCH_s11,
+   SIZE_MISMATCH_s12,
+   SIZE_MISMATCH_s33,
+   SIZE_MISMATCH_s43,
+   SIZE_MISMATCH_S0,
+   SIZE_MISMATCH_layer,
+   // end modify
    SIZE_MISMATCH_MUA,
    SIZE_MISMATCH_MUS,
    SIZE_MISMATCH_N,
@@ -27,6 +35,18 @@ static const char *errorstring(mcerror error) {
             return "No lightsource";
         case SIZE_MISMATCH_G:
             return "Scattering anisotropy array is not equal in size to the number of elements";
+        case SIZE_MISMATCH_s11:
+            return "s11 array is not equal in size to the angular discretization";
+        case SIZE_MISMATCH_s12:
+            return "s12 array is not equal in size to the angular discretization";
+        case SIZE_MISMATCH_s33:
+            return "s33 array is not equal in size to the angular discretization";
+        case SIZE_MISMATCH_s43:
+            return "s43 array is not equal in size to the angular discretization";
+        case SIZE_MISMATCH_S0:
+            return "S0 array is not equal to 4";
+        case SIZE_MISMATCH_layer:
+            return "layer array is not equal in size to the number of elements";
         case SIZE_MISMATCH_MUA:
             return "Absorption array is not equal in size to the number of elements";
         case SIZE_MISMATCH_N:

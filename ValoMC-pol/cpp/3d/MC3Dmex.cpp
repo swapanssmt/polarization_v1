@@ -102,10 +102,10 @@ void mexFunction(int nlhs, mxArray **plhs, int nrhs, const mxArray **prhs)
   version_string(infobuf);
   mexPrintf("%s",infobuf);
   
-  if ((nrhs != 26) || ((nlhs != 17) && (nlhs != 18)))
+  if ((nrhs != 26) || ((nlhs != 21) && (nlhs != 22)))
   {
     mexPrintf("nrhs %i nlhs %i", nrhs, nlhs);
-    mexErrMsgTxt("Syntax:\n [I, Q, U, V, IR, QR, UR, VR, IT, QT, UT, VT, vsol, bsol, ebsol, simulationtime, rnseed, [HN]] = MC3Dmex(H, HN, BH, r, BCType, BCIntensity, BCLightDirectionType, BCLNormal, BCn, mua, mus, g, n, f, phase0, Nphoton, layer, s11, s12, s33, s43, S0,nangles,activate_pol, disablepbar, rnseed)\n");
+    mexErrMsgTxt("Syntax:\n [I, Q, U, V, IB, QB, UB, VB, IR, QR, UR, VR, IT, QT, UT, VT, vsol, bsol, ebsol, simulationtime, rnseed, [HN]] = MC3Dmex(H, HN, BH, r, BCType, BCIntensity, BCLightDirectionType, BCLNormal, BCn, mua, mus, g, n, f, phase0, Nphoton, layer, s11, s12, s33, s43, S0,nangles,activate_pol, disablepbar, rnseed)\n");
   }
   mexPrintf("Initializing MC3D...\n");
   
@@ -222,6 +222,7 @@ void mexFunction(int nlhs, mxArray **plhs, int nrhs, const mxArray **prhs)
 
   // Copy solution from MC to output
   Array<double> out_I, out_Q, out_U, out_V, out_I_i, out_Q_i, out_U_i, out_V_i;
+  Array<double> out_IB, out_QB, out_UB, out_VB, out_IB_i, out_QB_i, out_UB_i, out_VB_i;
   Array<double> out_IR, out_QR, out_UR, out_VR, out_IT, out_QT, out_UT, out_VT, out_IR_i, out_QR_i, out_UR_i, out_VR_i, out_IT_i, out_QT_i, out_UT_i, out_VT_i;
   Array<double> vsolr, vsoli, bsolr, bsoli;
   Array<double> dbsolr, dbsoli; // [AL]
@@ -230,22 +231,26 @@ void mexFunction(int nlhs, mxArray **plhs, int nrhs, const mxArray **prhs)
   Convert_mxArray(&plhs[1], out_Q, out_Q_i, MC.Q.Nx, MC.Q.Ny);
   Convert_mxArray(&plhs[2], out_U, out_U_i, MC.U.Nx, MC.U.Ny);
   Convert_mxArray(&plhs[3], out_V, out_V_i, MC.V.Nx, MC.V.Ny);
-  Convert_mxArray(&plhs[4], out_IR, out_IR_i, MC.IR.Nx, MC.IR.Ny);
-  Convert_mxArray(&plhs[5], out_QR, out_QR_i, MC.QR.Nx, MC.QR.Ny);
-  Convert_mxArray(&plhs[6], out_UR, out_UR_i, MC.UR.Nx, MC.UR.Ny);
-  Convert_mxArray(&plhs[7], out_VR, out_VR_i, MC.VR.Nx, MC.VR.Ny);
-  Convert_mxArray(&plhs[8], out_IT, out_IT_i, MC.IT.Nx, MC.IT.Ny);
-  Convert_mxArray(&plhs[9], out_QT, out_QT_i, MC.QT.Nx, MC.QT.Ny);
-  Convert_mxArray(&plhs[10],out_UT, out_UT_i, MC.UT.Nx, MC.UT.Ny);
-  Convert_mxArray(&plhs[11],out_VT, out_VT_i, MC.VT.Nx, MC.VT.Ny);
+  Convert_mxArray(&plhs[4], out_IB, out_IB_i, MC.IB.Nx, MC.IB.Ny);
+  Convert_mxArray(&plhs[5], out_QB, out_QB_i, MC.QB.Nx, MC.QB.Ny);
+  Convert_mxArray(&plhs[6], out_UB, out_UB_i, MC.UB.Nx, MC.UB.Ny);
+  Convert_mxArray(&plhs[7], out_VB, out_VB_i, MC.VB.Nx, MC.VB.Ny);
+  Convert_mxArray(&plhs[8], out_IR, out_IR_i, MC.IR.Nx, MC.IR.Ny);
+  Convert_mxArray(&plhs[9], out_QR, out_QR_i, MC.QR.Nx, MC.QR.Ny);
+  Convert_mxArray(&plhs[10], out_UR, out_UR_i, MC.UR.Nx, MC.UR.Ny);
+  Convert_mxArray(&plhs[11], out_VR, out_VR_i, MC.VR.Nx, MC.VR.Ny);
+  Convert_mxArray(&plhs[12], out_IT, out_IT_i, MC.IT.Nx, MC.IT.Ny);
+  Convert_mxArray(&plhs[13], out_QT, out_QT_i, MC.QT.Nx, MC.QT.Ny);
+  Convert_mxArray(&plhs[14],out_UT, out_UT_i, MC.UT.Nx, MC.UT.Ny);
+  Convert_mxArray(&plhs[15],out_VT, out_VT_i, MC.VT.Nx, MC.VT.Ny);
   // end modify
-  Convert_mxArray(&plhs[12], vsolr, vsoli, MC.ER.Nx, MC.ER.Ny);
-  Convert_mxArray(&plhs[13], bsolr, bsoli, MC.EBR.Nx, MC.EBR.Ny);
-  Convert_mxArray(&plhs[14], dbsolr, dbsoli, MC.DEBR.Nx, MC.DEBR.Ny);
-  plhs[15]=mxCreateDoubleMatrix(1,1,mxREAL); // [AL]
+  Convert_mxArray(&plhs[16], vsolr, vsoli, MC.ER.Nx, MC.ER.Ny);
+  Convert_mxArray(&plhs[17], bsolr, bsoli, MC.EBR.Nx, MC.EBR.Ny);
+  Convert_mxArray(&plhs[18], dbsolr, dbsoli, MC.DEBR.Nx, MC.DEBR.Ny);
+  plhs[19]=mxCreateDoubleMatrix(1,1,mxREAL); // [AL]
   time(&now);
 
-  *mxGetPr(plhs[15])=(double) difftime(now,starting_time);
+  *mxGetPr(plhs[19])=(double) difftime(now,starting_time);
 
   long ii;
   for(ii = 0; ii < MC.ER.N; ii++){
@@ -276,6 +281,22 @@ void mexFunction(int nlhs, mxArray **plhs, int nrhs, const mxArray **prhs)
   for(ii = 0; ii < MC.V.N; ii++){
     out_V[ii] = MC.V[ii];
     out_V_i[ii] = MC.V_i[ii];
+  }
+  for(ii = 0; ii < MC.IB.N; ii++){
+    out_IB[ii] = MC.IB[ii];
+    out_IB_i[ii] = MC.IB_i[ii];
+  }
+  for(ii = 0; ii < MC.QB.N; ii++){
+    out_QB[ii] = MC.QB[ii];
+    out_QB_i[ii] = MC.QB_i[ii];
+  }
+  for(ii = 0; ii < MC.UB.N; ii++){
+    out_UB[ii] = MC.UB[ii];
+    out_UB_i[ii] = MC.UB_i[ii];
+  }
+  for(ii = 0; ii < MC.VB.N; ii++){
+    out_VB[ii] = MC.VB[ii];
+    out_VB_i[ii] = MC.VB_i[ii];
   }
   for(ii = 0; ii < MC.IR.N; ii++){
     out_IR[ii] = MC.IR[ii];
@@ -312,13 +333,13 @@ void mexFunction(int nlhs, mxArray **plhs, int nrhs, const mxArray **prhs)
   // modify end
 
   const mwSize dims[] = {1,1};
-  plhs[16] = mxCreateNumericMatrix(1, 1, mxUINT64_CLASS, mxREAL);
-  *((unsigned long*) mxGetData(plhs[16])) = MC.seed;
+  plhs[20] = mxCreateNumericMatrix(1, 1, mxUINT64_CLASS, mxREAL);
+  *((unsigned long*) mxGetData(plhs[20])) = MC.seed;
 
   // Copy topology neighbourhood
-  if(nlhs == 18){
+  if(nlhs == 22){
     Array<long> HNo;
-    Convert_mxArray(&plhs[17], HNo, MC.HN.Nx, MC.HN.Ny);
+    Convert_mxArray(&plhs[21], HNo, MC.HN.Nx, MC.HN.Ny);
     for(ii = 0; ii < MC.HN.N; ii++) HNo[ii] = MC.HN[ii];
   }
 
