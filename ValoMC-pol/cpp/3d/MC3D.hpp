@@ -1663,6 +1663,7 @@ void MC3D::ScatterPhoton(Photon *phot)
 			phot->S[0]= 1.0;
 			
 			for (i=0; i<3; i++) phot->dir[i] = phot->dir_n[i]; /* update U */
+      phot->curface = -1;
 			
   }
   else
