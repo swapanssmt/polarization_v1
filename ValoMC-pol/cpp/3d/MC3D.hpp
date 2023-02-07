@@ -32,6 +32,7 @@
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #define max(a, b) ((a) > (b) ? (a) : (b))
+#define SIGN(x) ((x)>=0 ? 1:-1)
 
 double eps = std::numeric_limits<double>::epsilon();
 
@@ -1892,6 +1893,22 @@ void MC3D::PropagatePhoton(Photon *phot)
 
         phot->phase += k[phot->curel] * ds;
       }
+      if(activate_pol==1)
+      {
+        if (phot->dir[2]<=0.0)
+        {
+          phi_s=atan2(phot->dir[1],phot->dir[0]);
+        }
+        else
+        {
+          phi_s=-atan2(phot->dir[1],phot->dir[0]);
+        }
+        rotSphi(phot , phi_s);
+        I[phot->curel] += phot->S2[0];
+				Q[phot->curel] += phot->S2[1];
+				U[phot->curel] += phot->S2[2];
+				V[phot->curel] += phot->S2[3];
+      }
 
       // Upgrade photon weigh
       phot->weight *= exp(-mua[phot->curel] * ds);
@@ -1933,6 +1950,34 @@ void MC3D::PropagatePhoton(Photon *phot)
             EBR[ib] += phot->weight * cos(phot->phase);
             EBI[ib] -= phot->weight * sin(phot->phase);
           }
+          // start modify
+          if(activate_pol==1)
+          {
+            if ( phot->pos[2]<=z_min)
+            {
+             /*return to detector reference frame*/
+             phi_s=atan2(phot->dir[1],phot->dir[0]);
+			       rotSphi(phot, phi_s);
+			       IR[0]+=phot->S2[0];
+			       QR[0]+=phot->S2[1];
+			       UR[0]+=phot->S2[2];
+			       VR[0]+=phot->S2[3];
+            }
+            if (phot->pos[2]>=z_max)
+            {
+              phi_s=-atan2(phot->dir[1],phot->dir[0]);
+              rotSphi(phot, phi_s);
+		          IT[0]+=phot->S2[0]*phot->weight;
+		          QT[0]+=phot->S2[1]*phot->weight;
+		          UT[0]+=phot->S2[2]*phot->weight;
+		          VT[0]+=phot->S2[3]*phot->weight;
+            }/*z>slab size*/
+            IR[ib] += phot->S2[0];
+			      QR[ib] += phot->S2[1];	
+			      UR[ib] += phot->S2[2];
+			      VR[ib] += phot->S2[3];
+          }
+          // end modify
           // Photon propagation will terminate
           return;
         }
@@ -2079,6 +2124,32 @@ void MC3D::MonteCarlo(bool (*progress)(double), void (*finalchecks)(int,int))
       ER[ii] += MCS[jj].ER[ii];
       EI[ii] += MCS[jj].EI[ii];
     }
+    // start modify
+    I[ii] = I_i[ii] = 0.0;
+    for (jj = 0; jj < nthread; jj++)
+    {
+      I[ii] += MCS[jj].I[ii];
+      I_i[ii] += MCS[jj].I_i[ii];
+    }
+    Q[ii] = Q_i[ii] = 0.0;
+    for (jj = 0; jj < nthread; jj++)
+    {
+      Q[ii] += MCS[jj].Q[ii];
+      Q_i[ii] += MCS[jj].Q_i[ii];
+    }
+    U[ii] = U_i[ii] = 0.0;
+    for (jj = 0; jj < nthread; jj++)
+    {
+      U[ii] += MCS[jj].U[ii];
+      U_i[ii] += MCS[jj].U_i[ii];
+    }
+    V[ii] = V_i[ii] = 0.0;
+    for (jj = 0; jj < nthread; jj++)
+    {
+      V[ii] += MCS[jj].V[ii];
+      V_i[ii] += MCS[jj].V_i[ii];
+    }
+    // end modify
   }
   for (ii = 0; ii < BH.Nx; ii++)
   {
@@ -2099,6 +2170,62 @@ void MC3D::MonteCarlo(bool (*progress)(double), void (*finalchecks)(int,int))
       DEBI[ii] += MCS[jj].DEBI[ii];
     }
   }
+  // start modify
+  for (ii = 0; ii < BH.Nx; ii++) // [AL]
+  {
+    IB[ii] = IB_i[ii] = 0.0;
+    for (jj = 0; jj < nthread; jj++)
+    {
+      IB[ii] += MCS[jj].IB[ii];
+      IB_i[ii] += MCS[jj].IB_i[ii];
+    }
+    QB[ii] = QB_i[ii] = 0.0;
+    for (jj = 0; jj < nthread; jj++)
+    {
+      QB[ii] += MCS[jj].QB[ii];
+      QB_i[ii] += MCS[jj].QB_i[ii];
+    }
+    UB[ii] = UB_i[ii] = 0.0;
+    for (jj = 0; jj < nthread; jj++)
+    {
+      UB[ii] += MCS[jj].UB[ii];
+      UB_i[ii] += MCS[jj].UB_i[ii];
+    }
+    VB[ii] = VB_i[ii] = 0.0;
+    for (jj = 0; jj < nthread; jj++)
+    {
+      VB[ii] += MCS[jj].VB[ii];
+      VB_i[ii] += MCS[jj].VB_i[ii];
+    }
+  }
+  IR[0]=IR_i[0]=0.0;
+  QR[0]=QR_i[0]=0.0;
+  UR[0]=UR_i[0]=0.0;
+  VR[0]=VR_i[0]=0.0;
+  IT[0]=IT_i[0]=0.0;
+  QT[0]=QT_i[0]=0.0;
+  UT[0]=UT_i[0]=0.0;
+  VT[0]=VT_i[0]=0.0;
+  for (jj = 0; jj < nthread; jj++)
+  {
+   IR[0] += MCS[jj].IR[0];
+   IR_i[0] += MCS[jj].IR_i[0];
+   QR[0] += MCS[jj].QR[0];
+   QR_i[0] += MCS[jj].QR_i[0];
+   UR[0] += MCS[jj].UR[0];
+   UR_i[0] += MCS[jj].UR_i[0];
+   VR[0] += MCS[jj].VR[0];
+   VR_i[0] += MCS[jj].VR_i[0];
+   IT[0] += MCS[jj].IT[0];
+   IT_i[0] += MCS[jj].IT_i[0];
+   QT[0] += MCS[jj].QT[0];
+   QT_i[0] += MCS[jj].QT_i[0];
+   UT[0] += MCS[jj].UT[0];
+   UT_i[0] += MCS[jj].UT_i[0];
+   VT[0] += MCS[jj].VT[0];
+   VT_i[0] += MCS[jj].VT_i[0];
+  }
+  // end modify
 
   //  delete[] itick;
   delete[] ticks;
@@ -2133,6 +2260,40 @@ void MC3D::MonteCarlo(bool (*progress)(double), void (*finalchecks)(int,int))
   AllReduceArray(EI, MPI_SUM);
   AllReduceArray(EBR, MPI_SUM);
   AllReduceArray(EBI, MPI_SUM);
+  // start modify
+  AllReduceArray(I, MPI_SUM);
+  AllReduceArray(I_i, MPI_SUM);
+  AllReduceArray(Q, MPI_SUM);
+  AllReduceArray(Q_i, MPI_SUM);
+  AllReduceArray(U, MPI_SUM);
+  AllReduceArray(U_i, MPI_SUM);
+  AllReduceArray(V, MPI_SUM);
+  AllReduceArray(V_i, MPI_SUM);
+  AllReduceArray(IB, MPI_SUM);
+  AllReduceArray(IB_i, MPI_SUM);
+  AllReduceArray(QB, MPI_SUM);
+  AllReduceArray(QB_i, MPI_SUM);
+  AllReduceArray(UB, MPI_SUM);
+  AllReduceArray(UB_i, MPI_SUM);
+  AllReduceArray(VB, MPI_SUM);
+  AllReduceArray(VB_i, MPI_SUM);
+  AllReduceArray(IR, MPI_SUM);
+  AllReduceArray(IR_i, MPI_SUM);
+  AllReduceArray(QR, MPI_SUM);
+  AllReduceArray(QR_i, MPI_SUM);
+  AllReduceArray(UR, MPI_SUM);
+  AllReduceArray(UR_i, MPI_SUM);
+  AllReduceArray(VR, MPI_SUM);
+  AllReduceArray(VR_i, MPI_SUM);
+  AllReduceArray(IT, MPI_SUM);
+  AllReduceArray(IT_i, MPI_SUM);
+  AllReduceArray(QT, MPI_SUM);
+  AllReduceArray(QT_i, MPI_SUM);
+  AllReduceArray(UT, MPI_SUM);
+  AllReduceArray(UT_i, MPI_SUM);
+  AllReduceArray(VT, MPI_SUM);
+  AllReduceArray(VT_i, MPI_SUM);
+  // end modify
   // Sum up computed photons
   long tmplong;
   MPI_Allreduce(&Nphoton, &tmplong, 1, MPI_LONG, MPI_SUM, MPI_COMM_WORLD);
@@ -2143,6 +2304,17 @@ void MC3D::MonteCarlo(bool (*progress)(double), void (*finalchecks)(int,int))
 #endif
 
   // Normalize output variables
+  // start modify
+  IR[0]/=(double)Nphoton;
+  QR[0]/=(double)Nphoton;
+  UR[0]/=(double)Nphoton;
+  VR[0]/=(double)Nphoton;
+  IT[0]/=(double)Nphoton;
+  QT[0]/=(double)Nphoton;
+  UT[0]/=(double)Nphoton;
+  VT[0]/=(double)Nphoton;
+
+  // end modify 
   if (omega <= 0.0)
   {
     for (ii = 0; ii < H.Nx; ii++)
